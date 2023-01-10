@@ -1,6 +1,6 @@
 import mesa
 
-from .agent import Cop, Citizen
+from .agent import Cop, Citizen, Media
 
 
 class EpsteinCivilViolence(mesa.Model):
@@ -38,6 +38,7 @@ class EpsteinCivilViolence(mesa.Model):
         citizen_vision=7,
         cop_vision=7,
         legitimacy=0.8,
+        media_density=0.0,
         max_jail_term=1000,
         active_threshold=0.1,
         arrest_prob_constant=2.3,
@@ -49,6 +50,7 @@ class EpsteinCivilViolence(mesa.Model):
         self.height = height
         self.citizen_density = citizen_density
         self.cop_density = cop_density
+        self.media_density = media_density
         self.citizen_vision = citizen_vision
         self.cop_vision = cop_vision
         self.legitimacy = legitimacy
@@ -77,15 +79,29 @@ class EpsteinCivilViolence(mesa.Model):
             model_reporters=model_reporters, agent_reporters=agent_reporters
         )
         unique_id = 0
-        if self.cop_density + self.citizen_density > 1:
-            raise ValueError("Cop density + citizen density must be less than 1")
+        if self.cop_density + self.citizen_density + self.media_density > 1:
+            raise ValueError(
+                "Cop density + citizen density + media density must be less than 1"
+            )
         for (contents, x, y) in self.grid.coord_iter():
             if self.random.random() < self.cop_density:
                 cop = Cop(unique_id, self, (x, y), vision=self.cop_vision)
                 unique_id += 1
                 self.grid[x][y] = cop
                 self.schedule.add(cop)
-            elif self.random.random() < (self.cop_density + self.citizen_density):
+            # if less than media_density plus cop_density but greater than cop_density
+            elif (
+                self.cop_density
+                < self.random.random()
+                < (self.cop_density + self.media_density)
+            ):
+                media = Media(unique_id, self, (x, y), vision=self.cop_vision)
+                unique_id += 1
+                self.grid[x][y] = media
+                self.schedule.add(media)
+            elif self.random.random() < (
+                self.cop_density + self.citizen_density + self.media_density
+            ):
                 citizen = Citizen(
                     unique_id,
                     self,
@@ -121,7 +137,7 @@ class EpsteinCivilViolence(mesa.Model):
         """
         count = 0
         for agent in model.schedule.agents:
-            if agent.breed == "cop":
+            if agent.breed == "cop" or agent.breed == "media":
                 continue
             if exclude_jailed and agent.jail_sentence:
                 continue

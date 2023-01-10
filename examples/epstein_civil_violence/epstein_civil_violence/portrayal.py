@@ -4,6 +4,7 @@ COP_COLOR = "#000000"
 AGENT_QUIET_COLOR = "#0066CC"
 AGENT_REBEL_COLOR = "#CC0000"
 JAIL_COLOR = "#757575"
+MEDIA_COLOR = "#00FF00"
 
 
 def citizen_cop_portrayal(agent):
@@ -28,6 +29,11 @@ def citizen_cop_portrayal(agent):
 
     elif isinstance(agent, Cop):
         portrayal["Color"] = COP_COLOR
+        portrayal["r"] = 0.5
+        portrayal["Layer"] = 1
+    
+    elif isinstance(agent, Media):
+        portrayal["Color"] = MEDIA_COLOR
         portrayal["r"] = 0.5
         portrayal["Layer"] = 1
     return portrayal
