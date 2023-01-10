@@ -182,3 +182,67 @@ class Cop(mesa.Agent):
         self.empty_neighbors = [
             c for c in self.neighborhood if self.model.grid.is_cell_empty(c)
         ]
+
+
+class Media(mesa.Agent):
+    """
+    Media. Follows protestors to file interesting stories.
+    Presence disuades police from arresting protestor.
+
+    Summary of rule: Moves toward protestor, if any. If cop sees
+    media, cop is less likely to arrest protestor.
+
+    Attributes: 
+        unique_id: unique int
+        x, y: Grid coordinates
+        vision: number of cells in each direction (N, S, E and W) that media is
+            able to inspect.
+    """
+
+    def __init__(self, unique_id, model, pos, vision):
+        """
+        Create a new Media.
+        Args:
+            unique_id: unique int
+            x, y: Grid coordinates
+            vision: number of cells in each direction (N, S, E and W) that
+                agent can inspect. Exogenous.
+            model: model instance
+        """
+        super().__init__(unique_id, model)
+        self.breed = "media"
+        self.pos = pos
+        self.vision = vision
+    
+
+    def step(self):
+        """
+        Moves toward protestor, if any. 
+        """
+        self.update_neighbors()
+        protestor_neighbors = []
+        for agent in self.neighbors:
+            if (
+                agent.breed == "citizen"
+                and agent.condition == "Active"
+                and agent.jail_sentence == 0
+            ):
+                protestor_neighbors.append(agent)
+        # If there is a protestor in the neighborhood, move toward it
+        if protestor_neighbors:
+            # check for empty cell next to protestors
+            empty_protestor_neighbors = []
+            for protestor in protestor_neighbors:
+                # check if empty cell next to protestor
+                ## below code won't work because it does not provide empty cells
+                ## next to protestor
+                ## have to find in code method to return empty cells next to protestor
+                ## or better yet empty cell in direction of protestor next to media agent
+                protestor_neighborhood = self.model.grid.get_neighborhood(
+                    protestor.pos, moore=False, radius=1
+                )
+            protestor = self.random.choice(protestor_neighbors)
+            self.model.grid.move_agent(self, protestor.pos)
+        if self.model.movement and self.empty_neighbors:
+            new_pos = self.random.choice(self.empty_neighbors)
+            self.model.grid.move_agent(self, new_pos)
