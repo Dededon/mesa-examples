@@ -67,13 +67,25 @@ class Citizen(mesa.Agent):
         self.jail_sentence = 0
         self.grievance = self.hardship * (1 - self.regime_legitimacy)
         self.arrest_probability = None
+        self.jail_release = None
 
     def step(self):
         """
         Decide whether to activate, then move if applicable.
         """
+        # Data collection requires a position, so agent cannot be removed from
+        # grid for jail unless data collection method is changed. Second part of 
+        # this process is within the cop agent commented out where it removes
+        # citizen from grid. To enable, also uncomment cop portion.
+        # if self.jail_release:
+        #     self.jail_release = False
+        #     self.model.grid.place_agent(
+        #         self, self.random.choice(self.model.grid.empties)
+        #     )
         if self.jail_sentence:
             self.jail_sentence -= 1
+            # if self.jail_sentence == 0:
+            #     self.jail_release = True
             return  # no other changes or movements if agent is in jail.
         self.update_neighbors()
         self.update_estimated_arrest_probability()
@@ -174,6 +186,8 @@ class Cop(mesa.Agent):
             arrestee = self.random.choice(active_neighbors)
             sentence = self.random.randint(0, self.model.max_jail_term)
             arrestee.jail_sentence = sentence
+            # remove agent from grid and place in jail (not implemented)
+            # self.model.grid.remove_agent(arrestee)
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
@@ -229,34 +243,23 @@ class Media(mesa.Agent):
         # Moves toward protestor, if any.
         """
         self.update_neighbors()
-        # protestor_neighbors = []
-        # for agent in self.neighbors:
-        #     if (
-        #         agent.breed == "citizen"
-        #         and agent.condition == "Active"
-        #         and agent.jail_sentence == 0
-        #     ):
-        #         protestor_neighbors.append(agent)
-
-        # If there is a protestor in the neighborhood, move toward it
-        # if protestor_neighbors:
-        #     # check for empty cell next to protestors
-        #     empty_protestor_neighbors = []
-        #     for protestor in protestor_neighbors:
-        #         # check if empty cell next to protestor
-        #         ## below code won't work because it does not provide empty cells
-        #         ## next to protestor
-        #         ## have to find in code method to return empty cells next to protestor
-        #         ## or better yet empty cell in direction of protestor next to media agent
-        #         protestor_neighborhood = self.model.grid.get_neighborhood(
-        #             protestor.pos, moore=False, radius=1
-        #         )
-        #     protestor = self.random.choice(protestor_neighbors)
-        #     self.model.grid.move_agent(self, protestor.pos)
 
         if self.model.movement and self.empty_neighbors:
-            new_pos = self.random.choice(self.empty_neighbors)
-            self.model.grid.move_agent(self, new_pos)
+            for empty_neighbor in self.empty_neighbors:
+                # check if any ajacent cells to agent adjacent empty cell are
+                # protestor if so, move toward protestor, if not, move randomly
+                empty_cell_neighbors = self.model.grid.iter_neighbors(
+                    empty_neighbor, moore=True
+                )
+                for empty_cell_neighbor in empty_cell_neighbors:
+                    if (
+                        empty_cell_neighbor.breed == "citizen"
+                        and empty_cell_neighbor.condition == "Active"
+                    ):
+                        self.model.grid.move_agent(self, empty_neighbor)
+                        break
+            # Agent found no active protestors to move toward, move randomly
+            self.model.grid.move_agent(self, self.random.choice(self.empty_neighbors))
 
     def update_neighbors(self):
         """
