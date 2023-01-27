@@ -74,7 +74,7 @@ class Citizen(mesa.Agent):
         Decide whether to activate, then move if applicable.
         """
         # Data collection requires a position, so agent cannot be removed from
-        # grid for jail unless data collection method is changed. Second part of 
+        # grid for jail unless data collection method is changed. Second part of
         # this process is within the cop agent commented out where it removes
         # citizen from grid. To enable, also uncomment cop portion.
         # if self.jail_release:
@@ -238,9 +238,11 @@ class Media(mesa.Agent):
 
     def step(self):
         """
-        Current moves around at random
-        # Not implimented --
-        # Moves toward protestor, if any.
+        Media agent, if in view of cop, reduces active citizen arrest rate by 50%
+        Media agent moves toward protestor, if any by checking for empty cells
+        in neighborhood, then if empty cell is found, checks neighborhood of
+        empty cell for active protestor, if found, moves toward protestor, if not,
+        moves randomly.
         """
         self.update_neighbors()
 
