@@ -118,7 +118,7 @@ class Citizen(mesa.Agent):
             ):
                 actives_in_vision += 1
         self.arrest_probability = 1 - math.exp(
-            -1 * self.model.arrest_prob_constant * (cops_in_vision / actives_in_vision)
+            -1 * self.model.arrest_prob_constant * math.floor(cops_in_vision / actives_in_vision)
         )
 
 
@@ -176,7 +176,7 @@ class Cop(mesa.Agent):
         Look around and see who my neighbors are.
         """
         self.neighborhood = self.model.grid.get_neighborhood(
-            self.pos, moore=False, radius=1
+            self.pos, moore=True, radius=self.vision
         )
         self.neighbors = self.model.grid.get_cell_list_contents(self.neighborhood)
         self.empty_neighbors = [
