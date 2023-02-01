@@ -78,15 +78,19 @@ class Citizen(mesa.Agent):
         self.update_neighbors()
         self.update_estimated_arrest_probability()
         net_risk = self.risk_aversion * self.arrest_probability
-        if (
-            self.condition == "Quiescent"
-            and (self.grievance - net_risk) > self.threshold
-        ):
+        if self.grievance - net_risk > self.threshold:
             self.condition = "Active"
-        elif (
-            self.condition == "Active" and (self.grievance - net_risk) <= self.threshold
-        ):
+        else:
             self.condition = "Quiescent"
+        # if (
+        #     self.condition == "Quiescent"
+        #     and (self.grievance - net_risk) > self.threshold
+        # ):
+        #     self.condition = "Active"
+        # elif (
+        #     self.condition == "Active" and (self.grievance - net_risk) <= self.threshold
+        # ):
+        #     self.condition = "Quiescent"
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
@@ -167,6 +171,7 @@ class Cop(mesa.Agent):
             arrestee = self.random.choice(active_neighbors)
             sentence = self.random.randint(0, self.model.max_jail_term)
             arrestee.jail_sentence = sentence
+            arrestee.condition = "Quiescent"
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)

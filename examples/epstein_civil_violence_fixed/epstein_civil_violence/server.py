@@ -48,11 +48,19 @@ class QuiescentChart(TextElement):
         return f"Quiescent Population: {model.quiescent_count}"
 
 
+class AverageJailTerm(TextElement):
+    """Display the average jail time."""
+    
+    def render(self, model):
+        return f"Average Jail Term: {model.average_jail_term}"
+
+
 citizen_chart = CitizenChart()
 cop_chart = CopChart()
 quiescent_chart = QuiescentChart()
 active_chart = ActiveChart()
 jail_chart = JailChart()
+average_jail_term = AverageJailTerm()
 
 chart = ChartModule(
     [
@@ -133,6 +141,7 @@ server = mesa.visualization.ModularServer(
         quiescent_chart,
         active_chart,
         jail_chart,
+        average_jail_term,
         chart,
     ],
     "Epstein Civil Violence",
