@@ -60,10 +60,20 @@ class EpsteinCivilViolence(mesa.Model):
         self.iteration = 0
         self.schedule = mesa.time.RandomActivation(self)
         self.grid = mesa.space.Grid(width, height, torus=True)
+
+        # agent counts
+        self.citizen_count = 0
+        self.cop_count = 0
+        self.jail_count = 0
+        self.active_count = 0
+        self.quiescent_count = 0
+
         model_reporters = {
             "Quiescent": lambda m: self.count_type_citizens(m, "Quiescent"),
             "Active": lambda m: self.count_type_citizens(m, "Active"),
             "Jailed": self.count_jailed,
+            "Citizens": self.count_citizens,
+            "Cops": self.count_cops,
         }
         agent_reporters = {
             "x": lambda a: a.pos[0],
@@ -102,6 +112,8 @@ class EpsteinCivilViolence(mesa.Model):
 
         self.running = True
         self.datacollector.collect(self)
+        self.citizen_count = sum(value for value in self.count_agents(self).values())
+        self.cop_count = self.count_cops(self)
 
     def step(self):
         """
@@ -110,6 +122,10 @@ class EpsteinCivilViolence(mesa.Model):
         self.schedule.step()
         # collect data
         self.datacollector.collect(self)
+        # update agent counts
+        self.active_count = self.count_type_citizens(self, "Active")
+        self.quiescent_count = self.count_type_citizens(self, "Quiescent")
+        self.jail_count = self.count_jailed(self)
         self.iteration += 1
         if self.iteration > self.max_iters:
             self.running = False
@@ -136,6 +152,40 @@ class EpsteinCivilViolence(mesa.Model):
         """
         count = 0
         for agent in model.schedule.agents:
-            if agent.breed == "citizen" and agent.jail_sentence:
+            if agent.breed == "citizen" and agent.jail_sentence > 0:
                 count += 1
         return count
+
+    @staticmethod
+    def count_citizens(model):
+        """
+        Helper method to count citizens.
+        """
+        count = 0
+        for agent in model.schedule.agents:
+            if agent.breed == "citizen":
+                count += 1
+        return count
+
+    @staticmethod
+    def count_cops(model):
+        """
+        Helper method to count cops.
+        """
+        count = 0
+        for agent in model.schedule.agents:
+            if agent.breed == "cop":
+                count += 1
+        return count
+
+    # combine all agent counts into one method
+    @staticmethod
+    def count_agents(model):
+        """
+        combines the various count methods into one
+        """
+        return {
+            "Quiescent": model.count_type_citizens(model, "Quiescent"),
+            "Active": model.count_type_citizens(model, "Active"),
+            "Jailed": model.count_jailed(model),
+        }

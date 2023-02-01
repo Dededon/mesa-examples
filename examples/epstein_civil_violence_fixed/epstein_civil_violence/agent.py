@@ -96,7 +96,7 @@ class Citizen(mesa.Agent):
         Look around and see who my neighbors are
         """
         self.neighborhood = self.model.grid.get_neighborhood(
-            self.pos, moore=False, radius=1
+            self.pos, moore=True, radius=self.vision
         )
         self.neighbors = self.model.grid.get_cell_list_contents(self.neighborhood)
         self.empty_neighbors = [
