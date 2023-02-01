@@ -79,6 +79,7 @@ def citizen_cop_portrayal(agent):
 
 
 model_params = dict(
+    # commented out values are the default values in mesa example model
     height=40,
     width=40,
     citizen_density=0.7,
@@ -89,7 +90,8 @@ model_params = dict(
     cop_vision=7,
     legitimacy=Slider("Legitimacy", 0.8, 0.0, 1.0, 0.1),
     # legitimacy=0.8,
-    max_jail_term=1000,
+    # max_jail_term=1000,
+    max_jail_term=Slider("Max Jail Term", 30, 0, 100, 10),
 )
 
 canvas_element = mesa.visualization.CanvasGrid(citizen_cop_portrayal, 40, 40, 480, 480)
