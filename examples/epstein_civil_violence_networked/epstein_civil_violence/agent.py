@@ -67,6 +67,8 @@ class Citizen(mesa.Agent):
         self.jail_sentence = 0
         self.grievance = self.hardship * (1 - self.regime_legitimacy)
         self.arrest_probability = None
+        self.neighborhood = None
+        self.network = None
 
     def step(self):
         """
@@ -111,7 +113,14 @@ class Citizen(mesa.Agent):
                 and c.condition == "Active"
                 and c.jail_sentence == 0
             ):
-                actives_in_vision += 1
+                actives_in_vision += (1 * (1 - self.model.network_discount_factor))
+        for c in self.network:
+            if (
+                c.breed == "citizen"
+                and c.condition == "Active"
+                and c.jail_sentence == 0
+            ):
+                actives_in_vision += (1 * self.model.network_discount_factor)
         self.arrest_probability = 1 - math.exp(
             -1
             * self.model.arrest_prob_constant
