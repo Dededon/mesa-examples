@@ -2,7 +2,7 @@ import mesa
 
 from .model import EpsteinCivilViolence
 from .agent import Citizen, Cop
-from mesa.visualization.UserParam import Slider
+from mesa.visualization.UserParam import Slider, NumberInput
 from mesa.visualization.modules import ChartModule, TextElement
 
 
@@ -48,25 +48,24 @@ class QuiescentChart(TextElement):
         return f"Quiescent Population: {model.quiescent_count}"
 
 
-class AverageJailTerm(TextElement):
-    """Display the average jail time."""
-    
-    def render(self, model):
-        return f"Average Jail Term: {model.average_jail_term}"
-
-
 citizen_chart = CitizenChart()
 cop_chart = CopChart()
 quiescent_chart = QuiescentChart()
 active_chart = ActiveChart()
 jail_chart = JailChart()
-average_jail_term = AverageJailTerm()
 
 chart = ChartModule(
     [
         {"Label": "Quiescent", "Color": "#648FFF"},
         {"Label": "Active", "Color": "#FE6100"},
         {"Label": "Jailed", "Color": "#808080"},
+    ],
+    data_collector_name="datacollector",
+)
+
+chart_spread_speed = ChartModule(
+    [
+        {"Label": "Speed of Rebellion Transmission", "Color": "#000000"},
     ],
     data_collector_name="datacollector",
 )
@@ -132,7 +131,7 @@ model_params = dict(
     cop_vision=Slider("Cop Vision", 7, 1, 10, 1),
     legitimacy=Slider("Government Legitimacy", 0.82, 0.0, 1, 0.01),
     max_jail_term=Slider("Max Jail Term", 30, 0, 50, 1),
-
+    seed=NumberInput("Random Seed", value=42),
 )
 canvas_element = mesa.visualization.CanvasGrid(citizen_cop_portrayal, 40, 40, 480, 480)
 server = mesa.visualization.ModularServer(
@@ -144,8 +143,8 @@ server = mesa.visualization.ModularServer(
         quiescent_chart,
         active_chart,
         jail_chart,
-        average_jail_term,
         chart,
+        chart_spread_speed,
     ],
     "Epstein Civil Violence",
     model_params,

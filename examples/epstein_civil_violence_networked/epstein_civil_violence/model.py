@@ -46,8 +46,11 @@ class EpsteinCivilViolence(mesa.Model):
         network_discount_factor=0.5,
         movement=True,
         max_iters=1000,
+        seed=None,
     ):
         super().__init__()
+        self.reset_randomizer(seed)
+        print(f"Running EpsteinCivilViolence with seed {self._seed}")
         self.width = width
         self.height = height
         self.citizen_density = citizen_density
@@ -74,24 +77,8 @@ class EpsteinCivilViolence(mesa.Model):
         self.quiescent_count = 0
         self.average_jail_term = 0
 
-        model_reporters = {
-            "Quiescent": lambda m: self.count_type_citizens(m, "Quiescent"),
-            "Active": lambda m: self.count_type_citizens(m, "Active"),
-            "Jailed": self.count_jailed,
-            "Citizens": self.count_citizens,
-            "Cops": self.count_cops,
-        }
-        agent_reporters = {
-            "x": lambda a: a.pos[0],
-            "y": lambda a: a.pos[1],
-            "breed": lambda a: a.breed,
-            "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
-            "condition": lambda a: getattr(a, "condition", None),
-            "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
-        }
-        self.datacollector = mesa.DataCollector(
-            model_reporters=model_reporters, agent_reporters=agent_reporters
-        )
+        self.running = True
+
         unique_id = 0
         if self.cop_density + self.citizen_density > 1:
             raise ValueError("Cop density + citizen density must be less than 1")
@@ -116,6 +103,32 @@ class EpsteinCivilViolence(mesa.Model):
                 self.grid[x][y] = citizen
                 self.schedule.add(citizen)
 
+        self.citizen_count = self.count_citizens(self)
+        self.cop_count = self.count_cops(self)
+        self.jail_count = self.count_jailed(self)
+        self.active_count = self.count_active(self)
+        self.quiescent_count = self.count_quiescent(self)
+
+        model_reporters = {
+            "Quiescent": self.count_quiescent,
+            "Active": self.count_active,
+            "Jailed": self.count_jailed,
+            "Speed of Rebellion Transmission": self.speed_of_rebellion_calculation,
+        }
+        agent_reporters = {
+            "x": lambda a: a.pos[0],
+            "y": lambda a: a.pos[1],
+            "breed": lambda a: a.breed,
+            "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
+            "condition": lambda a: getattr(a, "condition", None),
+            "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
+        }
+        self.datacollector = mesa.DataCollector(
+            model_reporters=model_reporters, agent_reporters=agent_reporters
+        )
+
+        self.datacollector.collect(self)
+
         # intializing the agent network
         for agent in self.schedule.agents:
             # create a list of tuples of (agent, distance to agent) distances
@@ -132,22 +145,16 @@ class EpsteinCivilViolence(mesa.Model):
                 # normalise all distances to be between 0 and 1 and replace
                 # the distance with the normalised distance
                 distances = [
-                    (agent, distance / max_distance)
-                    for agent, distance in distances
+                    (agent, distance / max_distance) for agent, distance in distances
                 ]
-                # assign network as a list to agent.network as a random 
-                # distribution of up to 20 agents preferring but not 
-                # limited to agents that are closer 
+                # assign network as a list to agent.network as a random
+                # distribution of up to 20 agents preferring but not
+                # limited to agents that are closer
                 agent.network = self.random.choices(
                     [agent for agent, distance in distances],
                     weights=[distance for agent, distance in distances],
                     k=self.citizen_network_size,
                 )
-
-        self.running = True
-        self.datacollector.collect(self)
-        self.citizen_count = sum(value for value in self.count_agents(self).values())
-        self.cop_count = self.count_cops(self)
 
     def step(self):
         """
@@ -157,8 +164,8 @@ class EpsteinCivilViolence(mesa.Model):
         # collect data
         self.datacollector.collect(self)
         # update agent counts
-        self.active_count = self.count_type_citizens(self, "Active")
-        self.quiescent_count = self.count_type_citizens(self, "Quiescent")
+        self.active_count = self.count_active(self)
+        self.quiescent_count = self.count_quiescent(self)
         self.jail_count = self.count_jailed(self)
 
         # update iteration
@@ -166,53 +173,61 @@ class EpsteinCivilViolence(mesa.Model):
         if self.iteration > self.max_iters:
             self.running = False
 
+
     @staticmethod
-    def count_type_citizens(model, condition, exclude_jailed=True):
+    def count_quiescent(model):
         """
-        Helper method to count agents by Quiescent/Active.
+        Helper method to count quiescent agents.
         """
-        count = 0
-        for agent in model.schedule.agents:
-            if agent.breed == "cop":
-                continue
-            if exclude_jailed and agent.jail_sentence > 0:
-                continue
-            if agent.condition == condition:
-                count += 1
-        return count
+        return len(
+            [
+                agent
+                for agent in model.schedule.agents
+                if agent.breed == "citizen" and agent.condition == "Quiescent"
+            ]
+        )
+
+    @staticmethod
+    def count_active(model):
+        """
+        Helper method to count active agents.
+        """
+        return len(
+            [
+                agent
+                for agent in model.schedule.agents
+                if agent.breed == "citizen" and agent.condition == "Active"
+            ]
+        )
 
     @staticmethod
     def count_jailed(model):
         """
         Helper method to count jailed agents.
         """
-        count = 0
-        for agent in model.schedule.agents:
-            if agent.breed == "citizen" and agent.jail_sentence > 0:
-                count += 1
-        return count
+        return len(
+            [
+                agent
+                for agent in model.schedule.agents
+                if agent.breed == "citizen" and agent.jail_sentence > 0
+            ]
+        )
 
     @staticmethod
     def count_citizens(model):
         """
         Helper method to count citizens.
         """
-        count = 0
-        for agent in model.schedule.agents:
-            if agent.breed == "citizen":
-                count += 1
-        return count
+        return len(
+            [agent for agent in model.schedule.agents if agent.breed == "citizen"]
+        )
 
     @staticmethod
     def count_cops(model):
         """
         Helper method to count cops.
         """
-        count = 0
-        for agent in model.schedule.agents:
-            if agent.breed == "cop":
-                count += 1
-        return count
+        return len([agent for agent in model.schedule.agents if agent.breed == "cop"])
 
     # combine all agent counts into one method
     @staticmethod
@@ -220,12 +235,24 @@ class EpsteinCivilViolence(mesa.Model):
         """
         combines the various count methods into one
         """
-        return {
-            "Quiescent": model.count_type_citizens(model, "Quiescent"),
-            "Active": model.count_type_citizens(model, "Active"),
-            "Jailed": model.count_jailed(model),
-        }
+        return (
+            model.count_quiescent(model)
+            + model.count_active(model)
+            + model.count_jailed(model)
+        )
 
+    @staticmethod
+    def speed_of_rebellion_calculation(model):
+        """
+        Calculates the speed of transmission of the rebellion.
+        """
+        if model.citizen_count == 0:
+            return 0
+        count = 0
+        for agent in model.schedule.agents:
+            if agent.breed == "citizen" and agent.flipped == True:
+                count += 1
+        return count / model.citizen_count
 
     def distance_calculation(self, agent1, agent2):
         """

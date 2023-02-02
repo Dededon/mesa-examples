@@ -69,21 +69,26 @@ class Citizen(mesa.Agent):
         self.arrest_probability = None
         self.neighborhood = None
         self.network = None
+        self.flipped = False
 
     def step(self):
         """
         Decide whether to activate, then move if applicable.
         """
+        self.flipped = False
         if self.jail_sentence:
             self.jail_sentence -= 1
             return  # no other changes or movements if agent is in jail.
         self.update_neighbors()
         self.update_estimated_arrest_probability()
         net_risk = self.risk_aversion * self.arrest_probability
+        temp_condition = self.condition
         if self.grievance - net_risk > self.threshold:
             self.condition = "Active"
         else:
             self.condition = "Quiescent"
+        if temp_condition != self.condition:
+            self.flipped = True
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
@@ -173,7 +178,7 @@ class Cop(mesa.Agent):
             arrestee = self.random.choice(active_neighbors)
             sentence = self.random.randint(0, self.model.max_jail_term)
             arrestee.jail_sentence = sentence
-            arrestee.condition = "Quiescent"
+            arrestee.condition = "Jailed"
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
