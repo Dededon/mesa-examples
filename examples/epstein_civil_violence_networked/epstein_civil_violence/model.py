@@ -114,6 +114,7 @@ class EpsteinCivilViolence(mesa.Model):
             "Active": self.count_active,
             "Jailed": self.count_jailed,
             "Speed of Rebellion Transmission": self.speed_of_rebellion_calculation,
+            "Seed": self.report_seed,
         }
         agent_reporters = {
             "x": lambda a: a.pos[0],
@@ -253,6 +254,15 @@ class EpsteinCivilViolence(mesa.Model):
             if agent.breed == "citizen" and agent.flipped == True:
                 count += 1
         return count / model.citizen_count
+
+
+    @staticmethod
+    def report_seed(model):
+        """
+        Helper method to report the seed.
+        """
+        return model._seed
+
 
     def distance_calculation(self, agent1, agent2):
         """
