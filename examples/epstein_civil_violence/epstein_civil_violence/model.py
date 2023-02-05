@@ -43,7 +43,7 @@ class EpsteinCivilViolence(mesa.Model):
         active_threshold=0.1,
         arrest_prob_constant=2.3,
         movement=True,
-        max_iters=1000,
+        max_iters=2000,
     ):
         super().__init__()
         self.width = width
