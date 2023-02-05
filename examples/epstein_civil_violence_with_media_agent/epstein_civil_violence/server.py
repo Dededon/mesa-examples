@@ -7,10 +7,11 @@ from mesa.visualization.modules import ChartModule, TextElement
 
 
 COP_COLOR = "#000000"
-AGENT_QUIET_COLOR = "#4daf4a"
-AGENT_REBEL_COLOR = "#FF0000"
+AGENT_QUIET_COLOR = "#648FFF"
+AGENT_REBEL_COLOR = "#FE6100"
 JAIL_COLOR = "#808080"
-MEDIA_COLOR = "#984ea3"
+JAIL_SHAPE = "rect"
+MEDIA_COLOR = "#DC267F"
 
 
 class JailChart(TextElement):
@@ -29,9 +30,9 @@ class ActiveChart(TextElement):
 
 chart = ChartModule(
     [
-        {"Label": "Quiescent", "Color": "Green"},
-        {"Label": "Active", "Color": "Red"},
-        {"Label": "Jailed", "Color": "Grey"},
+        {"Label": "Quiescent", "Color": "#648FFF"},
+        {"Label": "Active", "Color": "#FE6100"},
+        {"Label": "Jailed", "Color": "#808080"},
     ],
     data_collector_name="datacollector",
 )
@@ -53,24 +54,32 @@ def citizen_cop_portrayal(agent):
             AGENT_QUIET_COLOR if agent.condition == "Quiescent" else AGENT_REBEL_COLOR
         )
         color = JAIL_COLOR if agent.jail_sentence else color
+        shape = JAIL_SHAPE if agent.jail_sentence else "circle"
         portrayal["Color"] = color
-        portrayal["r"] = 0.8
+        portrayal["Shape"] = shape
+        if shape == "rect":
+            portrayal["w"] = 0.9
+            portrayal["h"] = 0.9
+        else:
+            portrayal["r"] = 0.5
+            portrayal["Filled"] = "false"
         portrayal["Layer"] = 0
 
     elif type(agent) is Cop:
         portrayal["Color"] = COP_COLOR
-        portrayal["r"] = 0.8
+        portrayal["r"] = 0.9
         portrayal["Layer"] = 1
 
     elif type(agent) is Media:
         portrayal["Color"] = MEDIA_COLOR
-        portrayal["r"] = 0.5
+        portrayal["r"] = 0.9
         portrayal["Layer"] = 1
 
     return portrayal
 
 
 model_params = dict(
+    # commented out values are the default values in mesa example model
     height=40,
     width=40,
     citizen_density=0.7,
@@ -81,7 +90,8 @@ model_params = dict(
     cop_vision=7,
     legitimacy=Slider("Legitimacy", 0.8, 0.0, 1.0, 0.1),
     # legitimacy=0.8,
-    max_jail_term=1000,
+    # max_jail_term=1000,
+    max_jail_term=Slider("Max Jail Term", 30, 0, 100, 10),
 )
 
 canvas_element = mesa.visualization.CanvasGrid(citizen_cop_portrayal, 40, 40, 480, 480)

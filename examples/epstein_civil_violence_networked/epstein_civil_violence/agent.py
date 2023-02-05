@@ -67,38 +67,28 @@ class Citizen(mesa.Agent):
         self.jail_sentence = 0
         self.grievance = self.hardship * (1 - self.regime_legitimacy)
         self.arrest_probability = None
-        self.jail_release = None
+        self.neighborhood = None
+        self.network = None
+        self.flipped = False
 
     def step(self):
         """
         Decide whether to activate, then move if applicable.
         """
-        # Data collection requires a position, so agent cannot be removed from
-        # grid for jail unless data collection method is changed. Second part of 
-        # this process is within the cop agent commented out where it removes
-        # citizen from grid. To enable, also uncomment cop portion.
-        # if self.jail_release:
-        #     self.jail_release = False
-        #     self.model.grid.place_agent(
-        #         self, self.random.choice(self.model.grid.empties)
-        #     )
+        self.flipped = False
         if self.jail_sentence:
             self.jail_sentence -= 1
-            # if self.jail_sentence == 0:
-            #     self.jail_release = True
             return  # no other changes or movements if agent is in jail.
         self.update_neighbors()
         self.update_estimated_arrest_probability()
         net_risk = self.risk_aversion * self.arrest_probability
-        if (
-            self.condition == "Quiescent"
-            and (self.grievance - net_risk) > self.threshold
-        ):
+        temp_condition = self.condition
+        if self.grievance - net_risk > self.threshold:
             self.condition = "Active"
-        elif (
-            self.condition == "Active" and (self.grievance - net_risk) <= self.threshold
-        ):
+        else:
             self.condition = "Quiescent"
+        if temp_condition != self.condition:
+            self.flipped = True
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
@@ -108,7 +98,7 @@ class Citizen(mesa.Agent):
         Look around and see who my neighbors are
         """
         self.neighborhood = self.model.grid.get_neighborhood(
-            self.pos, moore=False, radius=1
+            self.pos, moore=True, radius=self.vision
         )
         self.neighbors = self.model.grid.get_cell_list_contents(self.neighborhood)
         self.empty_neighbors = [
@@ -128,9 +118,18 @@ class Citizen(mesa.Agent):
                 and c.condition == "Active"
                 and c.jail_sentence == 0
             ):
-                actives_in_vision += 1
+                actives_in_vision += (1 * (1 - self.model.network_discount_factor))
+        for c in self.network:
+            if (
+                c.breed == "citizen"
+                and c.condition == "Active"
+                and c.jail_sentence == 0
+            ):
+                actives_in_vision += (1 * self.model.network_discount_factor)
         self.arrest_probability = 1 - math.exp(
-            -1 * self.model.arrest_prob_constant * (cops_in_vision / actives_in_vision)
+            -1
+            * self.model.arrest_prob_constant
+            * math.floor(cops_in_vision / actives_in_vision)
         )
 
 
@@ -168,8 +167,6 @@ class Cop(mesa.Agent):
         """
         self.update_neighbors()
         active_neighbors = []
-        media_present = False
-        make_arrest = True
         for agent in self.neighbors:
             if (
                 agent.breed == "citizen"
@@ -177,17 +174,11 @@ class Cop(mesa.Agent):
                 and agent.jail_sentence == 0
             ):
                 active_neighbors.append(agent)
-            if agent.breed == "media":
-                media_present = True
-        # if active neighbors and media present, 50/50 chance to arrest an active neighbor
-        if active_neighbors and media_present:
-            make_arrest = self.random.random() < 0.5
-        if active_neighbors and make_arrest:
+        if active_neighbors:
             arrestee = self.random.choice(active_neighbors)
             sentence = self.random.randint(0, self.model.max_jail_term)
             arrestee.jail_sentence = sentence
-            # remove agent from grid and place in jail (not implemented)
-            # self.model.grid.remove_agent(arrestee)
+            arrestee.condition = "Jailed"
         if self.model.movement and self.empty_neighbors:
             new_pos = self.random.choice(self.empty_neighbors)
             self.model.grid.move_agent(self, new_pos)
@@ -197,76 +188,7 @@ class Cop(mesa.Agent):
         Look around and see who my neighbors are.
         """
         self.neighborhood = self.model.grid.get_neighborhood(
-            self.pos, moore=False, radius=1
-        )
-        self.neighbors = self.model.grid.get_cell_list_contents(self.neighborhood)
-        self.empty_neighbors = [
-            c for c in self.neighborhood if self.model.grid.is_cell_empty(c)
-        ]
-
-
-class Media(mesa.Agent):
-    """
-    Media. Presence disuades police from arresting protestor.
-    # if can impliment media follows protestors
-
-    Summary of rule: Moves toward protestor, if any. If cop sees
-    media, cop is less likely to arrest protestor.
-
-    Attributes:
-        unique_id: unique int
-        x, y: Grid coordinates
-        vision: number of cells in each direction (N, S, E and W) that media is
-            able to inspect.
-    """
-
-    def __init__(self, unique_id, model, pos, vision):
-        """
-        Create a new Media.
-        Args:
-            unique_id: unique int
-            x, y: Grid coordinates
-            vision: number of cells in each direction (N, S, E and W) that
-                agent can inspect. Exogenous.
-            model: model instance
-        """
-        super().__init__(unique_id, model)
-        self.breed = "media"
-        self.pos = pos
-        # agent.py currently using cop vision for init because not needed at current
-        self.vision = vision
-
-    def step(self):
-        """
-        Current moves around at random
-        # Not implimented --
-        # Moves toward protestor, if any.
-        """
-        self.update_neighbors()
-
-        if self.model.movement and self.empty_neighbors:
-            for empty_neighbor in self.empty_neighbors:
-                # check if any ajacent cells to agent adjacent empty cell are
-                # protestor if so, move toward protestor, if not, move randomly
-                empty_cell_neighbors = self.model.grid.iter_neighbors(
-                    empty_neighbor, moore=True
-                )
-                for empty_cell_neighbor in empty_cell_neighbors:
-                    if (
-                        empty_cell_neighbor.breed == "citizen"
-                        and empty_cell_neighbor.condition == "Active"
-                    ):
-                        self.model.grid.move_agent(self, empty_neighbor)
-                        break
-            # Agent found no active protestors to move toward, move randomly
-            self.model.grid.move_agent(self, self.random.choice(self.empty_neighbors))
-
-    def update_neighbors(self):
-        """
-        Look around and see who my neighbors are.
-        """
-        self.neighborhood = self.model.grid.get_neighborhood(
-            self.pos, moore=False, radius=1
+            self.pos, moore=True, radius=self.vision
         )
         self.neighbors = self.model.grid.get_cell_list_contents(self.neighborhood)
         self.empty_neighbors = [
