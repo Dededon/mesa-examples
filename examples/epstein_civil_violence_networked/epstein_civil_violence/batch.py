@@ -31,7 +31,7 @@ fixed_parameters = {
 # parameters you want to vary
 # can also include combinations here
 params = {
-    'citizen_network_size': [*range(0,30,10)],
+    'citizen_network_size': [*range(0 , 30 + 1, 10)],
     'network_discount_factor': [0,0.33,.5,0.66,1],
     'seed': [*range(1,10+1,1)]
 }
