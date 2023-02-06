@@ -1,6 +1,7 @@
 from model import EpsteinCivilViolence
 from mesa.batchrunner import FixedBatchRunner
 import json
+import logging as log
 
 import os
 
@@ -9,22 +10,31 @@ import pandas as pd
 
 from itertools import product
 
+# set up logging to output to cwd /data
+# log debug messages to file
+# info message to console
+cwd = os.getcwd()
+path = os.path.join(cwd, "data/")
+log.basicConfig(filename=f"{path}/log/batch.log", level=log.DEBUG)
+log.info("Starting batch run")
+
+
 # parameters that will remain constant
 fixed_parameters = {
     'width':40,
     'height':40,
     'citizen_density':0.7,
-    'cop_density':0.074,
+    'cop_density':0.04,
     'citizen_vision':7,
     'cop_vision':7,
-    'legitimacy':0.8,
+    'legitimacy':0.82,
     # 'citizen_network_size':20,
-    'max_jail_term':1000,
+    'max_jail_term':30,
     'active_threshold':0.1,
     'arrest_prob_constant':2.3,
     # 'network_discount_factor':0.5,
     'movement':True,
-    'max_iters':1000,
+    'max_iters':500,
     # 'seed':None
 }
 
@@ -47,7 +57,9 @@ def dict_product(dicts): #could just use the below but it's cleaner this way
     return (dict(zip(dicts, x)) for x in product(*dicts.values()))
 
 parameters_list = [*dict_product(params)]
-# print(parameters_list)
+
+# log the parameters
+log.debug(parameters_list)
 
 # what to run and what to collect
 # iterations is how many runs per parameter value
