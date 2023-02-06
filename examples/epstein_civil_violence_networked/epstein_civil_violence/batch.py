@@ -2,6 +2,8 @@ from model import EpsteinCivilViolence
 from mesa.batchrunner import FixedBatchRunner
 import json
 
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -29,7 +31,7 @@ fixed_parameters = {
 # parameters you want to vary
 # can also include combinations here
 params = {
-    'citizen_network_size': [*range(1,30+1,10)],
+    'citizen_network_size': [*range(0,30,10)],
     'network_discount_factor': [0,0.33,.5,0.66,1],
     'seed': [*range(1,10+1,1)]
 }
@@ -76,8 +78,9 @@ batch_step_raw = batch_run.get_collector_model()
 # batch_df_a = batch_run.get_agent_vars_dataframe()
 
 # export the data to a csv file for graphing/analysis
-path = 'C:\\Users\\grace\\Desktop\\macs_abm\\mesa-examples\\examples\\epstein_civil_violence_networked\\data'
-batch_end.to_csv(path+"\\model_batch.csv")
+cwd = os.getcwd()
+path = os.path.join(cwd, "data/")
+batch_end.to_csv(f"{path}\model_batch.csv")
 
 for key,df in batch_step_raw.items():
     df.to_csv(f'{path}\\step\\size{key[0]}_discount{key[1]}_{key[2]}.csv')
