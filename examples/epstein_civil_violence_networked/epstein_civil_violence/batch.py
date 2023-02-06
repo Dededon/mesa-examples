@@ -23,14 +23,15 @@ fixed_parameters = {
     # 'network_discount_factor':0.5,
     'movement':True,
     'max_iters':1000,
-    'seed':None
+    # 'seed':None
 }
 
 # parameters you want to vary
 # can also include combinations here
 params = {
-    'citizen_network_size': [*range(1,20+1,10)],
-    'network_discount_factor': [x/10 for x in range(1,10+1,5)]
+    'citizen_network_size': [*range(1,30+1,10)],
+    'network_discount_factor': [0,0.33,.5,0.66,1],
+    'seed': [*range(1,10+1,1)]
 }
 
 def dict_product(dicts): #could just use the below but it's cleaner this way
@@ -49,9 +50,9 @@ parameters_list = [*dict_product(params)]
 # what to run and what to collect
 # iterations is how many runs per parameter value
 # max_steps is how long to run the model
-max_steps,iterations = 10, 3
+max_steps = 500
 batch_run = FixedBatchRunner(EpsteinCivilViolence, parameters_list,
-                             fixed_parameters, iterations=iterations,
+                             fixed_parameters,
                              model_reporters={
                                 "Quiescent": lambda m: m.count_quiescent(m),
                                 "Active": lambda m: m.count_active(m),
